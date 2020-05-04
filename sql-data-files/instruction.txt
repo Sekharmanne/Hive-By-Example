@@ -1,0 +1,36 @@
+
+-- Before uploading data, make sure we create a schema 
+
+mysql -u root -pcloudera;
+create schema labs;
+use labs;
+show tables;
+
+
+---------------------------------
+Open a new terminal
+---------------------------------
+-- first runs the countries table 
+
+-- change the directory first where sql files are there
+cd ~/labs/map-reduce/hive-lab/sql-data-files
+
+-- run the following commands to directory populate the data
+mysql -u root -pcloudera labs< countries.sql
+mysql -u root -pcloudera labs< states.sql
+mysql -u root -pcloudera labs< cities.sql
+
+-- Now from other ternimal, check data
+use labs;
+show tables;
+select * from countries; 
+
+-------------------------------
+some important joins
+-------------------------------
+select ctr.name, count(1) from countries ctr, states st
+where ctr.id = st.country_id
+group by ctr.name 
+order by 2 desc
+;
+

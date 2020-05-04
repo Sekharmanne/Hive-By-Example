@@ -1,0 +1,26 @@
+build This directory contains the tools to compile, run, test, and deliver the application.
+config Various configuration files required by the application to run.
+docgen Documentation artifacts that are used to build actual documents. These are
+organized in two sub-directories javadoc and xdocs. The former only contains resources
+(like CSS files) to generate programmer's documentation (JavaDoc) -- the actual
+documentation contents are obtained from the source code. The latter contains both
+resources (like stylesheets and Java code) to generate all other kinds of documentation
+(like design and users documents) and the actual documentation contents in the form of
+XML/HTML files.
+launch Launcher scripts and installation instructions bundled with the default application
+distribution file. Its sub-directories contain further resources to build platform-specific
+distributions.
+legal Terms and conditions under which the various artifacts in the shoola-omero SVN
+module are released. A README file specifies which license applies to which artifact.
+LIB All library files required by the application. Its test sub-directory contains additional
+libraries required by the test code.
+SRC Contains the application source files.
+TEST The test code.
+CodeTemplate This file describes the coding style that all source files should conform
+to.
+README old trustworthy README file.
+The whole OMERO.insight source code (code name Shoola) and other related artifacts can
+be freely downloaded (refer to Legal for licensing issues) from our Subversion repository. To
+do so, you will need a SVN client. If you don't have it, you can get one from
+http://subversion.tigris.org/. Before you start downloading from Subversion, make a new
+directory and move there. Thus to checkout the latest source for shoola-omera the module

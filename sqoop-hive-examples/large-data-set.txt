@@ -1,0 +1,42 @@
+
+
+-- make sure we have the drive for other databases;
+--https://www.cloudera.com/documentation/enterprise/5-9-x/topics/cdh_ig_jdbc_driver_install.html
+$ curl -L 'http://jdbc.postgresql.org/download/postgresql-9.2-1002.jdbc4.jar' -o postgresql-9.2-1002.jdbc4.jar
+$ sudo cp postgresql-9.2-1002.jdbc4.jar /var/lib/sqoop/
+
+
+-- Just to see how this big data set looks like
+
+sqoop eval \
+	--connect jdbc:postgresql://localhost/db_schema \
+	--username postgres \
+	--password 'my_password'  \
+	--query "SELECT count(*) FROM my_table"
+
+
+sqoop import \
+	--connect jdbc:postgresql://localhost/db_schema \
+	--username postgres \
+	--password 'my_password'  \
+	--table hrc_bo_pac \
+	--target-dir labs/landing/bigfiles \
+	--fields-terminated-by '|' \
+	-m 1 --delete-target-dir
+
+-- Lets pull so
+
+-- JSON tables
+sqoop eval \
+	--connect jdbc:postgresql://localhost/db_schema \
+	--username postgres \
+	--password 'my_password'  \
+	--query "SELECT * FROM events"
+
+--lets import it
+sqoop import \
+	--connect jdbc:postgresql://localhost/db_schema \
+	--username postgres \
+	--password 'my_password'  \
+	--table events \
+	--target-dir labs/landing/events

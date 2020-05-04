@@ -1,0 +1,297 @@
+                   Hive
+-------------------------------------------
+There is no direct way to check the version. Run the below command to check the version.
+hive> set system:sun.java.command;
+
+
+----------------------------
+Move a file to hdfs first
+----------------------------
+ls ~/labs/map-reduce/hive-lab/free-txt-files/india.txt
+hdfs dfs -mkdir labs
+hdfs dfs -put ~/labs/map-reduce/hive-lab/free-txt-files/india.txt labs/
+hdfs dfs -ls labs/india.txt
+
+-------------------------------------------
+A simple hive code - word count example
+-------------------------------------------
+
+1) connect to hive shell
+2) create database labs;
+3) create tables docs (line
+CREATE TABLE docs (line STRING);
+LOAD DATA INPATH 'docs' OVERWRITE INTO TABLE docs;
+CREATE TABLE word_counts AS
+SELECT word, count(1) AS count FROM
+(SELECT explode(split(line, '\s')) AS word FROM docs) w
+GROUP BY word
+ORDER BY word;
+
+Hive is not a standalone tool and relies on various components for storing and querying data. 
+Within the Hadoop ecosystem, Hive is considered a client data access tool. Data access requires a compute, storage, management, as well as a security framework
+
+
+Topic 1: Primitive Data Types
+------------------------------
+Type			Size									Example
+.....			.....									.....
+TINYINT 		1 byte signed integer. 					20
+SMALLINT 		2 byte signed integer. 					20
+INT 			4 byte signed integer. 					20
+BIGINT 			8 byte signed integer. 					20
+BOOLEAN 		Boolean true or false. 					TRUE
+FLOAT 			Single precision floating point. 		3.14159
+DOUBLE 			Double precision floating point. 		3.14159
+STRING 			Sequence of characters. 				'Now is the time', "for all good men"
+TIMESTAMP 		Integer, float, or string. 				1327882394 (Unix epoch seconds),1327882394.123456789 (Unix epoch seconds plus nanoseconds), 
+														and '2012-02-03 12:34:56.123456789' (JDBCcompliant java.sql.Timestamp format)
+BINARY 			Array of bytes. See discussion below
+
+
+It’s useful to remember that each of these types is implemented in Java.
+So the particular behavior details will be exactly what you would expect from the corresponding Java types. 
+For example, STRING is implemented by the Java String, FLOAT is implemented by Java float, etc.
+Values of the new TIMESTAMP type can be integers, which are interpreted as seconds since the Unix epoch time (Midnight, January 1, 1970), floats, which are interpreted as seconds
+since the epoch time with nanosecond resolution (up to 9 decimal places), and strings, which are interpreted according to the JDBC date string format convention,
+YYYY-MM-DD hh:mm:ss.fffffffff.
+
+Collection Data Types
+----------------------
+
+STRUCT 			Analogous to a C struct or an “object.” 							struct('John', 'Doe')
+				Fields can be accessed using the “dot” notation. 
+				For example, if a column name is of type STRUCT 
+				{first STRING; last STRING}, then the 
+				first name field can be referenced using name.first.
+
+MAP 			A collection of key-value tuples, 									map('first', 'John', 'last', 'Doe')
+				where the fields are accessed using array notation (e.g., ['key']). 
+				For example, if a column name is of type MAP with key→value pairs
+				'first'→'John' and 'last'→'Doe', then the last name can be 
+				referenced using name['last'].
+
+ARRAY			Ordered sequences of the same type that are indexable using			array('John', 'Doe')
+				zero-based integers. For example, if a column name is of type
+				ARRAY of strings with the value ['John', 'Doe'], then
+				the second element can be referenced using name[1].
+				
+Most relational databases don’t support such collection types, because using them tends to break normal form. 
+For example, in traditional data models, structs might be captured in separate tables, with foreign key relations between the tables, as appropriate.
+
+A practical problem with breaking normal form is the greater risk of data duplication, leading to unnecessary disk space consumption and potential data inconsistencies, as duplicate copies can grow out of sync as changes are made
+
+Here is a table declaration that demonstrates how to use these types, an employees table in a fictitious Human Resources application:
+	CREATE TABLE employees (
+	name STRING,
+	salary FLOAT,
+	subordinates ARRAY<STRING>,
+	deductions MAP<STRING, FLOAT>,
+	address STRUCT<street:STRING, city:STRING, state:STRING, zip:INT>);
+
+
+Hive’s default record and field delimiters
+-------------------------------------------
+1) \n => For text files, each line is a record, so the line feed character separates records.
+2) ^A (“control” A) Separates all fields (columns). Written using the octal code \001 when explicitly specified in CREATE TABLE statements.
+2) ^B Separate the elements in an ARRAY or STRUCT, or the key-value pairs in a MAP. Written using the octal code \002 when explicitly specified in CREATE TABLE statements.
+3) ^C Separate the key from the corresponding value in MAP key-value pairs. Written using the octal code \003 when explicitly specified in CREATE TABLE statements.
+
+	CREATE TABLE employees (
+		name STRING,
+		salary FLOAT,
+		subordinates ARRAY<STRING>,
+		deductions MAP<STRING, FLOAT>,
+		address STRUCT<street:STRING, city:STRING, state:STRING, zip:INT>
+		)
+	ROW FORMAT DELIMITED
+	FIELDS TERMINATED BY '\001'
+	COLLECTION ITEMS TERMINATED BY '\002'
+	MAP KEYS TERMINATED BY '\003'
+	LINES TERMINATED BY '\n'
+	STORED AS TEXTFILE;
+	
+	Note : 
+		The ROW FORMAT DELIMITED sequence of keywords must appear before any of the other clauses.
+		The character \001 is the octal code for ^A. The clause ROW FORMAT DELIMITED FIELDS TERMINATED BY '\001' means that Hive will use the ^A character to separate fields.
+		Similarly, the character \002 is the octal code for ^B. The clause ROW FORMAT DELIMITED COLLECTION ITEMS TERMINATED BY '\002' means that Hive will use the ^B character to separate collection items.
+		Finally, the character \003 is the octal code for ^C. The clause ROW FORMAT DELIMITED MAP KEYS TERMINATED BY '\003' means that Hive will use the ^C character to separate map keys from values.
+		
+		
+Database in Hive & Data Definition
+----------------------------------
+1) HiveQL is the Hive query language. 
+2) Like all SQL dialects in widespread use, it doesn’t fully conform to any particular revision of the ANSI SQL standard. 
+3) It is perhaps closest to MySQL’s dialect.
+4) Hive offers no support for rowlevel inserts, updates, and deletes. Hive doesn’t support transactions.
+5) If you don’t specify a database, the default database is used.
+6) The Hive concept of a database is essentially just a catalog or namespace of tables
+
+Lets Practice
+-------------
+
+1) CREATE DATABASE sales;
+2) CREATE DATABASE IF NOT EXISTS sales;
+3) SHOW DATABASES;
+4) SHOW DATABASES LIKE 's.*';
+5) hive> CREATE DATABASE IF NOT EXISTS sales
+       > COMMENT 'Holds all financial tables';
+6) DESCRIBE DATABASE sales;
+7) you can associate key-value properties with the database, although their only function currently is to provide a way of adding information to the output of DESCRIBE DATABASE EXTENDED <database>:
+		hive> CREATE DATABASE sales7
+			> WITH DBPROPERTIES ('creator' = 'Mark Moneybags', 'date' = '2012-01-02');
+8) DESCRIBE DATABASE EXTENDED sales7;
+
+9) user sales - is the command to use the database, however there is no command to see which database is being used. 
+10) Setting a property to print the current database as part of the prompt 
+	hive> set hive.cli.print.current.db=true;
+	
+11) DROP DATABASE IF EXISTS sales;
+	The IF EXISTS is optional and suppresses warnings if financials doesn’t exist.
+	By default, Hive won’t permit you to drop a database if it contains tables. 
+	You can either drop the tables first or append the CASCADE keyword to the command, which will cause the Hive to drop the tables in the database first:
+	hive> DROP DATABASE IF EXISTS financials CASCADE;
+	When a database is dropped, its directory is also deleted
+	
+	
+12) Alter Database
+	
+	12.1) You can set key-value pairs in the DBPROPERTIES associated with a database using the ALTER DATABASE command.
+			hive> ALTER DATABASE sales SET DBPROPERTIES ('edited-by' = 'Labs');
+			Imp **** There is no way to delete or “unset” a DBPROPERTY.
+13) Creating Tables
+
+	CREATE TABLE IF NOT EXISTS sales.employees (
+		name STRING COMMENT 'Employee name',
+		salary FLOAT COMMENT 'Employee salary',
+		subordinates ARRAY<STRING> COMMENT 'Names of subordinates',
+		deductions MAP<STRING, FLOAT>
+		COMMENT 'Keys are deductions names, values are percentages',
+		address STRUCT<street:STRING, city:STRING, state:STRING, zip:INT>
+		COMMENT 'Home address')
+		COMMENT 'Description of the table'
+		TBLPROPERTIES ('creator'='me', 'created_at'='2012-01-02 10:00:00', ...)
+		LOCATION '/user/hive/warehouse/mydb.db/employees';
+
+Imp Note
+---------
+* Hive automatically adds two table properties: last_modified_by holds the username of the last user to modify the table, and last_modified_time holds the epoch time in seconds of that modification.
+* show tblproperties employees
+
+14) You can also copy the schema (but not the data) of an existing table:
+	CREATE TABLE IF NOT EXISTS sales.employees2
+	LIKE sales.employees;
+	
+15) see the tables
+	show tables;
+	show tables emp.*;
+	show tables in sales;
+	
+16) Describe the table
+	DESCRIBE EXTENDED sales.employees;
+	DESCRIBE FORMATTED sales.employees;
+	
+17) If you only want to see the schema for a particular column, append the column to the table name
+	describe sales.employee
+	
+Managed Tables in Hive
+-----------------------
+The tables we have created so far are called managed tables or sometimes called internal tables, because Hive controls the lifecycle of their data (more or less). As we’ve seen,
+Hive stores the data for these tables in a subdirectory under the directory defined by hive.metastore.warehouse.dir (e.g., /user/hive/warehouse)
+	run this command and see hdfs dfs -ls /user/hive/warehouse
+When we drop a managed table, Hive deletes the data in the table.
+
+
+External Table
+--------------
+Suppose we are analyzing data from the stock markets. Periodically, we ingest the data for NASDAQ and the NYSE.
+https://www.nasdaq.com/symbol/csv/historical
+
+CREATE EXTERNAL TABLE IF NOT EXISTS stocks (
+	date STRING,
+	close FLOAT,
+	volume INT,
+	open FLOAT,
+	high FLOAT,
+	low FLOAT)
+		ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+		LOCATION '/landing/stocks';
+		
+** The EXTERNAL keyword tells Hive this table is external and the LOCATION … clause is required to tell Hive where it’s located.
+** Because it’s external, Hive does not assume it owns the data. Therefore, dropping the table does not delete the data, although the metadata for the table will be deleted.
+
+Copy schema but change the data set
+	CREATE EXTERNAL TABLE IF NOT EXISTS sales.employees3
+	LIKE sales.employees
+	LOCATION '/path/to/data';
+	
+** If you omit the EXTERNAL keyword and the original table is external, the new table will also be external
+** If you omit EXTERNAL and the original table is managed, the new table will also be managed.
+
+
+Alter Tables Statements
+-------------------------
+Most table properties can be altered with ALTER TABLE statements, which change metadata about the table but not the data itself.
+
+Renaming a Table : ALTER TABLE employee RENAME TO xemployee;
+
+Changing Column : 
+	ALTER TABLE employee
+	CHANGE COLUMN salary total_salary INT
+	COMMENT 'changing it'
+	AFTER deduction;
+
+Adding Column : 
+	ALTER TABLE log_messages ADD COLUMNS (
+	app_name STRING COMMENT 'Application name',
+	session_id LONG COMMENT 'The current session id');
+	
+Deleting or Replacing Columns : 
+
+	ALTER TABLE log_messages REPLACE COLUMNS (
+	hours_mins_secs INT COMMENT 'hour, minute, seconds from timestamp',
+	severity STRING COMMENT 'The message severity'
+	message STRING COMMENT 'The rest of the message');
+	ALTER TABLE log_messages ADD IF NOT EXISTS
+	PARTITION (year = 2011, month = 1, day = 1) LOCATION '/logs/2011/01/01'
+	PARTITION (year = 2011, month = 1, day = 2) LOCATION '/logs/2011/01/02'
+	PARTITION (year = 2011, month = 1, day = 3) LOCATION '/logs/2011/01/03'
+
+Alter Storage Properties
+	ALTER TABLE log_messages
+	PARTITION(year = 2012, month = 1, day = 1)
+	SET FILEFORMAT SEQUENCEFILE;
+
+---------------------------------------
+Inserting Data Into Hive Table
+---------------------------------------
+
+Partitioned, Managed Tables
+---------------------------
+It’s used for distributing load horizontally, moving data physically closer to its most frequent users, and other purposes
+
+CREATE TABLE employees (
+	name STRING,
+	salary FLOAT,
+	subordinates ARRAY<STRING>,
+	deductions MAP<STRING, FLOAT>,
+	address STRUCT<street:STRING, city:STRING, state:STRING, zip:INT>
+	)
+PARTITIONED BY (country STRING, state STRING);
+
+Partitioning tables changes how Hive structures the data storage. If we create this table in the mydb database, there will still be an employees directory for the table:
+...
+.../employees/country=CA/state=AB
+.../employees/country=CA/state=BC
+...
+.../employees/country=US/state=AL
+.../employees/country=US/state=AK
+...
+
+
+You can see the partitions that exist with the SHOW PARTITIONS command:
+hive> SHOW PARTITIONS employees;
+
+Key Configuration
+------------------
+1) The database directory is created under a top-level directory specified by the property hive.metastore.warehouse.dir
+2) You can override this default location for the new directory as shown in this example CREATE DATABASE sales LOCATION '/my/preferred/directory';
